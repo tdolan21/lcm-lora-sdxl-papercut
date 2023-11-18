@@ -1,4 +1,4 @@
-# LCM + Papercut Image-gen Interface
+# LCM-SDXL + LoRa
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?&style=for-the-badge&logo=PyTorch&logoColor=white)
@@ -12,6 +12,11 @@ This application utilizes advanced AI models, including Stable Diffusion and var
 
 Full post and instructional available [here](https://tims-tutorials.vercel.app/blog/lcm_sdxl)
 
+## Adapters Included
++ Papercut
++ Pixel-Art-XL ([download](https://huggingface.co/nerijs/pixel-art-xl/resolve/main/pixel-art-xl.safetensors?download=true))
++ AnimatedDiff GIF generation
+  
 ### Setting up Conda Environment
 
 Creating a dedicated Conda environment for your project is considered a best practice as it helps manage dependencies and avoid conflicts.
@@ -35,6 +40,7 @@ You do not need to locally install CUDA or cudnn, pytorch ships with prebuilt bi
 
 
 ## Installation
+First make sure that you hav the safetensors file available above downloaded and placed in the root directory of the application.
 
 To set up this application, ensure you have Python installed. Then, install the required libraries using pip:
 
@@ -48,5 +54,9 @@ Once you have the requirements installed you can start the application with:
 ```bash
 gradio app.py
 ```
+### Features
++ Generate paper mache images with dimensionality.
++ Generate pixel art in 16 bit stylings
++ Generate GIF with varying frame rate from custom prompt
 
 
