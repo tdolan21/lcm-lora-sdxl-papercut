@@ -82,6 +82,36 @@ def generate_image_with_adapter(prompt, num_inference_steps, guidance_scale):
     pipe.unfuse_lora()
     return image
 
+def pixel_art_image(prompt, negative_prompt, num_inference_steps, guidance_scale, num_images):
+    model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+    lcm_lora_id = "latent-consistency/lcm-lora-sdxl"
+    pipe = DiffusionPipeline.from_pretrained(model_id, variant="fp16")
+    pipe.scheduler = LCMScheduler.from_config(pipe.scheduler.config)
+
+    pipe.load_lora_weights(lcm_lora_id, adapter_name="lora")
+    pipe.load_lora_weights("./pixel-art-xl.safetensors", adapter_name="pixel")
+
+    pipe.set_adapters(["lora", "pixel"], adapter_weights=[1.0, 1.2])
+    pipe.to(device="cuda", dtype=torch.float16)
+
+    prompt = prompt
+    negative_prompt = negative_prompt
+
+    num_images = int(num_images)
+
+    for i in range(num_images):
+        img = pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+        ).images[0]
+    
+    img.save(f"lcm_lora_{i}.png")
+
+    return img
+
+
 
 def modify_image(image, brightness, contrast):
     # Function to modify brightness and contrast
@@ -102,15 +132,26 @@ with gr.Blocks(gr.themes.Soft()) as demo:
             steps_input = gr.Slider(minimum=1, maximum=10, label="Inference Steps", value=4)
             guidance_input = gr.Slider(minimum=0, maximum=2, label="Guidance Scale", value=1)
             generate_button = gr.Button("Generate Image")
+
     with gr.Row():
-        with gr.Accordion(label="Papercut Image Generation"):
+        with gr.Accordion(label="Papercut Image Generation", open=False):
             adapter_prompt_input = gr.Textbox(label="Prompt", placeholder="papercut, a cute fox")
             adapter_steps_input = gr.Slider(minimum=1, maximum=10, label="Inference Steps", value=4)
             adapter_guidance_input = gr.Slider(minimum=0, maximum=2, label="Guidance Scale", value=1)
-            adapter_generate_button = gr.Button("Generate Image with Adapter")
+            adapter_generate_button = gr.Button("Generate Papercut Image")
+        
+    with gr.Row():
+        with gr.Accordion(label="Pixel-Art-XL Image Generation", open=False):
+            pixel_prompt_input = gr.Textbox(label="Prompt", placeholder="pixel, a cute corgi")
+            pixel_negative_prompt_input = gr.Textbox(label="Negative Prompt", placeholder="3d render, realistic")
+            pixel_steps_input = gr.Slider(minimum=1, maximum=10, label="Inference Steps", value=8)
+            pixel_guidance_input = gr.Slider(minimum=0, maximum=3, label="Guidance Scale", value=1.2)
+            pixel_num_images_input = gr.Number(label="Number of Images", value=9)
+            pixel_generate_button = gr.Button("Generate PixelArt Image")
+
 
     with gr.Row():
-        with gr.Accordion(label="Inpainting"):
+        with gr.Accordion(label="Inpainting", open=False):
             inpaint_prompt_input = gr.Textbox(label="Prompt for Inpainting", placeholder="a castle on top of a mountain, highly detailed, 8k")
             init_image_input = gr.File(label="Initial Image")
             mask_image_input = gr.File(label="Mask Image")
@@ -119,33 +160,64 @@ with gr.Blocks(gr.themes.Soft()) as demo:
             inpaint_button = gr.Button("Inpaint Image")
 
     with gr.Row():
-        with gr.Accordion(label="Image Modification (Experimental)"):
+        with gr.Accordion(label="Image Modification (Experimental)", open=False):
             brightness_slider = gr.Slider(minimum=0.5, maximum=1.5, step=1, label="Brightness")
             contrast_slider = gr.Slider(minimum=0.5, maximum=1.5, step=1, label="Contrast")
             modify_button = gr.Button("Modify Image")
 
-    
+    with gr.Row():
+        with gr.Accordion(label="Additional Information", open=False):
+            gr.Markdown(
+                        "+ The first Accordion is Default LCM Generation"
+                        + "\n"
+                        + "+ The second Accordion is Papercut Generation"
+                        + "\n"
+                        + "+ The third Accordion is Pixel-Art-XL Generation"
+                        + "\n"
+                        + "+ The fourth Accordion is Inpainting"
+                        + "\n"
+                        + "+ The fifth Accordion is Image Modification"
+                        )
 
+    
+    # Button for default LCM Image Generation
     generate_button.click(
         generate_image,
         inputs=[prompt_input, steps_input, guidance_input],
         outputs=image_output
     )
-
+    # Button for Image Modification
     modify_button.click(
         modify_image,
         inputs=[image_output, brightness_slider, contrast_slider],
         outputs=image_output
     )
+    # Button for Inpainting
     inpaint_button.click(
         inpaint_image,
         inputs=[inpaint_prompt_input, init_image_input, mask_image_input, inpaint_steps_input, inpaint_guidance_input],
         outputs=image_output
     )
+    # Button for Papercut
     adapter_generate_button.click(
         generate_image_with_adapter,
         inputs=[adapter_prompt_input, adapter_steps_input, adapter_guidance_input],
         outputs=image_output
     )
+    
+    # Link the button to the pixel_art_image function
+    pixel_generate_button.click(
+            pixel_art_image,
+            inputs=[
+                pixel_prompt_input, 
+                pixel_negative_prompt_input, 
+                pixel_steps_input, 
+                pixel_guidance_input,
+                pixel_num_images_input 
+            ],
+            outputs=image_output
+        )
+   
+
 
 demo.launch()
